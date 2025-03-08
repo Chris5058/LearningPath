@@ -1,3 +1,6 @@
 This is manual APplication Exception
 MoreChanges 
+<<<<<<< HEAD
 Even more
+=======
+>>>>>>> 57cc166 (more echo statements)
