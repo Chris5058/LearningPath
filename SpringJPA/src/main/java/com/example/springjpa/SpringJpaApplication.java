@@ -41,7 +41,7 @@ public CommandLineRunner demo(UserService userService) {
 			System.out.println("Updated user: " + u);
 		});
 
-		// Find by email
+		// Find by emailu
 		User foundByEmail = userService.findByEmail("john@example.com");
 		System.out.println("Found by email: " + foundByEmail);
 	};
