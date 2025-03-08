@@ -3,12 +3,14 @@ package com.example.springjpa;
 import com.example.springjpa.entities.User;
 import com.example.springjpa.repository.UserRepository;
 import com.example.springjpa.services.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
+@Slf4j
 public class SpringJpaApplication {
 
 	public static void main(String[] args) {
@@ -40,7 +42,7 @@ public CommandLineRunner demo(UserService userService) {
 			userService.updateUser(u);
 			System.out.println("Updated user: " + u);
 		});
-
+log.info("All users: " + userService.findAllUsers());
 		// Find by email
 		User foundByEmail = userService.findByEmail("john@example.com");
 		System.out.println("Found by email: " + foundByEmail);
