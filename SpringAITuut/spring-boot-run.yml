@@ -1,0 +1,42 @@
+name: Run Spring Boot Application
+
+on:
+  push:
+    branches:
+      - main  # Trigger on pushes to the main branch
+  pull_request:
+    branches:
+      - main  # Also trigger on pull requests to main
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
+
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up JDK (Java Development Kit)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'  # Specify Java version (adjust if your project uses a different one)
+          distribution: 'temurin'  # Eclipse Temurin is a popular OpenJDK distribution
+
+      # Step 3: Cache Maven dependencies to speed up builds
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Step 4: Build the project with Maven
+      - name: Build with Maven
+        run: mvn clean package -DskipTests  # Builds the JAR file, skipping tests for simplicity
+
+      # Step 5: Run the Spring Boot application
+      - name: Run Spring Boot Application
+        run: java -jar target/*.jar  # Runs the generated JAR (assumes default Maven output)
