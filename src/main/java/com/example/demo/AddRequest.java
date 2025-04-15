@@ -1,5 +1,4 @@
 package com.example.demo;
-package com.example.demo;
 
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;
