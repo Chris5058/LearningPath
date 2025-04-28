@@ -10,6 +10,7 @@ public class AuthService {
 
     private static final String VALID_USERNAME = "Chaitu786";
     // Encrypted password using BCrypt
+    //one more
     private static final String ENCRYPTED_PASSWORD = "$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG";
 
     private final PasswordEncoder passwordEncoder;
