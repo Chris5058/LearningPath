@@ -93,8 +93,8 @@ StockPriceApp/
 
 ## Login Credentials
 
-- Username: Chaitu786
-- Password: Manu123$
+- Username: C 
+- Password: M 
 
 ## Alpha Vantage API Integration
 
