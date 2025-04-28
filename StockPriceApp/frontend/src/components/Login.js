@@ -15,7 +15,7 @@ const Login = ({ onLogin }) => {
 
     try {
       const response = await axios.post('/api/auth/login', { username, password });
-      
+
       if (response.data.success) {
         onLogin();
       } else {
@@ -60,7 +60,7 @@ const Login = ({ onLogin }) => {
                 required
               />
               <Form.Text className="text-muted">
-                Hint: Password is Manu123$
+                Hint: Contact administrator for password
               </Form.Text>
             </Form.Group>
 
