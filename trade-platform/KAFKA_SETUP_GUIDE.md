@@ -114,22 +114,28 @@ The project already has the necessary Kafka configuration in place:
    - Use the tool to view topics, messages, and more
 
 2. **Using Command Line Tools**:
-   - List topics:
+   - First, find the name of your Kafka container:
      ```bash
-     docker exec -it trade-platform_kafka_1 kafka-topics --list --bootstrap-server localhost:9092
+     docker ps | grep kafka
+     ```
+   - List topics (replace `<kafka_container_name>` with your actual container name):
+     ```bash
+     docker exec -it <kafka_container_name> kafka-topics --list --bootstrap-server localhost:9092
      ```
    - Create a topic:
      ```bash
-     docker exec -it trade-platform_kafka_1 kafka-topics --create --topic test-topic --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+     docker exec -it <kafka_container_name> kafka-topics --create --topic test-topic --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
      ```
    - Produce messages:
      ```bash
-     docker exec -it trade-platform_kafka_1 kafka-console-producer --topic trade-orders --bootstrap-server localhost:9092
+     docker exec -it <kafka_container_name> kafka-console-producer --topic trade-orders --bootstrap-server localhost:9092
      ```
    - Consume messages:
      ```bash
-     docker exec -it trade-platform_kafka_1 kafka-console-consumer --topic trade-orders --from-beginning --bootstrap-server localhost:9092
+     docker exec -it <kafka_container_name> kafka-console-consumer --topic trade-orders --from-beginning --bootstrap-server localhost:9092
      ```
+
+   Note: The container name is typically in the format `<project_directory_name>_kafka_1`. For example, if your project directory is named `demo_trade-platform`, the container name might be `demo_trade-platform_kafka_1`.
 
 ## Troubleshooting
 
@@ -138,11 +144,18 @@ The project already has the necessary Kafka configuration in place:
    - Verify the bootstrap server address in `application.properties` matches your Kafka setup
    - Check logs for connection errors
 
-2. **Message Serialization Issues**:
+2. **Container Name Issues**:
+   - If you encounter "No such container" errors, the container name might be different from what you expect
+   - Use `docker ps | grep kafka` to find the actual name of your Kafka container
+   - Docker Compose names containers based on: `<project_directory_name>_<service_name>_<replica_number>`
+   - The project directory name is the name of the directory where your docker-compose.yml file is located
+   - If you're running docker-compose from a parent directory, the container names will include the subdirectory name
+
+3. **Message Serialization Issues**:
    - Ensure the producer and consumer are using compatible serialization formats
    - Check that the `TradeOrderDTO` class is the same across all services
 
-3. **Topic Not Found**:
+4. **Topic Not Found**:
    - The Trade API service is configured to create the topic automatically
    - You can manually create the topic using the command line tools
 

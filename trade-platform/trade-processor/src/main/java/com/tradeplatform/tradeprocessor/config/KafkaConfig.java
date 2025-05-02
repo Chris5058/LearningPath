@@ -98,7 +98,7 @@ public class KafkaConfig {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
                 (record, ex) -> {
                     log.error("Error processing record: {}", record.value(), ex);
-                    return deadLetterTopic;
+                    return new org.apache.kafka.common.TopicPartition(deadLetterTopic, 0);
                 });
 
         // Configure the backoff policy for retries
@@ -106,10 +106,10 @@ public class KafkaConfig {
 
         // Create the error handler with the recoverer and backoff policy
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
-        
+
         // Add exception types that should not be retried
         errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
-        
+
         return errorHandler;
     }
 }

@@ -8,6 +8,7 @@ A microservices-based trading platform that uses Apache Kafka for event-driven c
 - **trade-processor**: Service for processing and executing trade orders
 - **portfolio-service**: Service for managing user portfolios
 - **common-lib**: Shared library with DTOs and common utilities
+- **trade-ui**: React-based frontend for viewing trade orders
 
 ## Quick Start Guide
 
@@ -55,19 +56,38 @@ cd trade-api
 mvn spring-boot:run
 ```
 
+4. Trade UI (optional):
+```bash
+cd trade-ui
+npm install  # Only needed the first time
+npm start
+```
+
+The UI will be available at [http://localhost:3000](http://localhost:3000)
+
+Login with:
+- Username: Chaitu786
+- Password: Test123
+
 Alternatively, you can use IntelliJ IDEA to run each service. See the [Kafka Setup Guide](KAFKA_SETUP_GUIDE.md) for detailed instructions.
 
 ## Kafka Setup
 
 For detailed instructions on setting up Kafka in IntelliJ IDEA, see the [Kafka Setup Guide](KAFKA_SETUP_GUIDE.md).
 
-## API Documentation
+## Documentation
+
+### API Documentation
 
 The Trade API service exposes the following endpoints:
 
 - `POST /api/orders`: Submit a new trade order
 - `GET /api/orders/{orderId}`: Get a trade order by ID
 - `GET /api/orders`: Get all trade orders
+
+### UI Documentation
+
+For detailed instructions on how to open and use the UI, see the [UI Guide](UI_GUIDE.md).
 
 ## Development
 

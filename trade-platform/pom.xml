@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.5</version>
+        <version>3.2.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -22,21 +22,20 @@
         <module>trade-api</module>
         <module>trade-processor</module>
         <module>portfolio-service</module>
-        <module>audit-service</module>
         <module>common-lib</module>
     </modules>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>23</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-boot.version>3.1.5</spring-boot.version>
-        <spring-kafka.version>3.0.12</spring-kafka.version>
-        <kafka-clients.version>3.4.0</kafka-clients.version>
+        <spring-boot.version>3.2.5</spring-boot.version>
+        <spring-kafka.version>3.1.2</spring-kafka.version>
+        <kafka-clients.version>3.6.1</kafka-clients.version>
         <lombok.version>1.18.30</lombok.version>
         <testcontainers.version>1.19.1</testcontainers.version>
-        <micrometer.version>1.11.5</micrometer.version>
+        <micrometer.version>1.12.5</micrometer.version>
     </properties>
 
     <dependencyManagement>
