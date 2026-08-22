@@ -1,0 +1,100 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'iOS/**'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'iOS/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test StepPacer
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Select the newest Xcode on the runner
+        run: |
+          set -euo pipefail
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Selecting $latest"
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+
+          # The project uses objectVersion 77 (synchronized folders) and the
+          # Swift Testing framework, both of which need Xcode 16 or newer.
+          major=$(xcodebuild -version | head -1 | sed -E 's/Xcode ([0-9]+).*/\1/')
+          if [ "$major" -lt 16 ]; then
+            echo "::error::Xcode $major found, but this project requires Xcode 16+."
+            exit 1
+          fi
+
+      - name: Pick an available iPhone simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          udid=$(xcrun simctl list devices available \
+            | grep -E '^ +iPhone' \
+            | tail -1 \
+            | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
+
+          if [ -z "$udid" ]; then
+            echo "::error::No iPhone simulator available on this runner image."
+            xcrun simctl list devices available
+            exit 1
+          fi
+
+          name=$(xcrun simctl list devices available | grep "$udid" | sed -E 's/^ +(.*) \(.*/\1/')
+          echo "Using $name ($udid)"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      # Split from the test run so a compile failure is unambiguous in the log.
+      - name: Compile
+        run: |
+          set -euo pipefail
+          xcodebuild build-for-testing \
+            -project iOS/StepPacer.xcodeproj \
+            -scheme StepPacer \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath /tmp/build.xcresult \
+            ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM=""
+
+      - name: Run tests
+        run: |
+          set -euo pipefail
+          xcodebuild test-without-building \
+            -project iOS/StepPacer.xcodeproj \
+            -scheme StepPacer \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath /tmp/test.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS=""
+
+      - name: Upload result bundles
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: /tmp/*.xcresult
+          retention-days: 7
+          if-no-files-found: ignore
