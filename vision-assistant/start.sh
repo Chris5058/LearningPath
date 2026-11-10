@@ -6,8 +6,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PY=python
-command -v python >/dev/null 2>&1 || PY=python3
+# Set PYTHON to use a specific interpreter, e.g.
+#   PYTHON="/c/Users/you/AppData/Local/Programs/Python/Python312/python.exe" ./start.sh
+PY="${PYTHON:-python}"
+command -v "$PY" >/dev/null 2>&1 || PY=python3
 
 if [[ ! -d .venv ]]; then
   echo "Creating the Python environment (first run only)..."
@@ -27,6 +29,7 @@ if ! python -c "import cv2, mediapipe" 2>/dev/null; then
   echo "Installing the camera packages (this can take a few minutes)..."
   if ! python -m pip install --quiet opencv-python-headless mediapipe; then
     echo
+    echo "!! This Python is: $(python -c 'import sys, platform; print(sys.version.split()[0], platform.machine(), sys.executable)')"
     echo "!! The camera packages could not be installed on this computer."
     echo "!! Iris will start without the camera; chat and simulated gestures still work."
     echo
