@@ -1,0 +1,57 @@
+# Copy to config.yaml and run:  python -m iris -c config.yaml
+# Every key is optional; see iris/config.py for all of them and their defaults.
+
+name: Iris
+wake_words: ["hey iris", "iris"]
+
+# --- Claude ---
+model: claude-opus-5-5
+scene_model: claude-opus-5-5   # looks at a camera frame every activity_interval seconds
+effort: low                    # low = fastest spoken replies
+web_search: true
+
+# --- Voice ---
+whisper_model: base.en         # tiny.en is faster on a Raspberry Pi 4
+# piper_model: models/en_US-lessac-medium.onnx
+
+# --- Vision ---
+camera_index: 0
+activity_interval: 20          # seconds between activity checks (only sent when the scene changes)
+proactive: false               # true: Claude decides what to do when your activity changes
+
+# --- Devices ---
+device_backend: simulated      # or home_assistant (needs HOME_ASSISTANT_TOKEN)
+# home_assistant_url: http://homeassistant.local:8123
+# devices:
+#   desk_lamp: light.desk_lamp
+#   ceiling_light: light.living_room
+#   speaker: media_player.living_room
+
+# --- Rules: gesture or activity -> actions ---
+# Gestures: open_palm, fist, pointing_up, thumbs_up, thumbs_down, victory,
+#           i_love_you, swipe_left, swipe_right
+# Actions:  {builtin: stop|listen} | {device: NAME, action: ACTION, value: N} | {say: "text"}
+rules:
+  - when: "gesture:open_palm"
+    do: [{builtin: stop}]
+  - when: "gesture:pointing_up"
+    do: [{builtin: listen}]
+  - when: "gesture:thumbs_up"
+    do: [{device: speaker, action: volume_up}]
+  - when: "gesture:thumbs_down"
+    do: [{device: speaker, action: volume_down}]
+  - when: "gesture:swipe_right"
+    do: [{device: speaker, action: next}]
+  - when: "gesture:swipe_left"
+    do: [{device: speaker, action: previous}]
+  - when: "gesture:fist"
+    do: [{device: speaker, action: pause}]
+  - when: "activity:reading"
+    do: [{device: desk_lamp, action: "on"}]
+  - when: "activity:sleeping"
+    do:
+      - {device: desk_lamp, action: "off"}
+      - {device: ceiling_light, action: "off"}
+      - {device: speaker, action: pause}
+  - when: "activity:away"
+    do: [{device: ceiling_light, action: "off"}]

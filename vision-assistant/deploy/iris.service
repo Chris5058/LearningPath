@@ -1,0 +1,19 @@
+# Start Iris at boot on the device.
+#   sudo cp deploy/iris.service /etc/systemd/system/
+#   sudo systemctl enable --now iris
+# Put ANTHROPIC_API_KEY=... (and HOME_ASSISTANT_TOKEN=...) in /home/pi/iris.env, chmod 600.
+[Unit]
+Description=Iris voice and vision assistant
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/LearningPath/vision-assistant
+EnvironmentFile=/home/pi/iris.env
+ExecStart=/home/pi/LearningPath/vision-assistant/.venv/bin/python -m iris -c config.yaml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
