@@ -113,6 +113,7 @@ class ActivityMonitor(threading.Thread):
         self._current: dict | None = None
         self._signature: np.ndarray | None = None
         self._last_check = float("-inf")
+        self.enabled = cfg.activity_recognition
 
     @property
     def current(self) -> dict | None:
@@ -125,6 +126,8 @@ class ActivityMonitor(threading.Thread):
 
     def run(self) -> None:
         while not self._halt.wait(self.cfg.activity_interval):
+            if not self.enabled:
+                continue
             try:
                 self.check(time.monotonic())
             except anthropic.RateLimitError:
@@ -134,6 +137,9 @@ class ActivityMonitor(threading.Thread):
                 log.warning("Activity check failed (%s): %s", exc.status_code, exc.message)
             except anthropic.APIConnectionError:
                 log.warning("Activity check failed: network unreachable.")
+            except Exception as exc:  # e.g. no API key configured
+                log.warning("Activity check failed: %s", exc)
+                self._halt.wait(60)
 
     def check(self, now: float) -> dict | None:
         """Classify the current frame if it is worth it. Returns the new

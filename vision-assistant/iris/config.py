@@ -76,6 +76,7 @@ class Config:
     gesture_fps: float = 10.0
     gesture_model: str = "models/gesture_recognizer.task"
     gesture_hold_frames: int = 4
+    activity_recognition: bool = True  # periodically ask Claude what the user is doing
     activity_interval: float = 20.0  # seconds between activity checks while the scene changes
     activity_max_interval: float = 180.0  # re-check a static scene at least this often
     activity_min_confidence: float = 0.6

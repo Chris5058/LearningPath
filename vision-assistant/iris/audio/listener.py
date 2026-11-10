@@ -118,8 +118,12 @@ class MicListener(threading.Thread):
         self._halt.set()
 
     def run(self) -> None:
-        import sounddevice as sd
-        from faster_whisper import WhisperModel
+        try:
+            import sounddevice as sd
+            from faster_whisper import WhisperModel
+        except (ImportError, OSError) as exc:
+            log.error("Voice input is disabled (%s). Install sounddevice and faster-whisper.", exc)
+            return
 
         log.info("Loading speech model '%s'...", self.cfg.whisper_model)
         model = WhisperModel(self.cfg.whisper_model, device="cpu", compute_type="int8")

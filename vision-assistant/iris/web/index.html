@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iris</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --text: #1b1f24; --muted: #68717d;
+    --line: #dfe3e8; --accent: #3b6ef5; --accent-text: #ffffff;
+    --good: #1f9d55; --warn: #c77700; --chip: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171b; --panel: #1d2127; --text: #e8ebef; --muted: #98a2ae;
+      --line: #2e343c; --accent: #6b93ff; --accent-text: #0e1116;
+      --good: #4cc38a; --warn: #f0a742; --chip: #272c34;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  h1 { font-size: 18px; margin: 0; }
+  h2 { font-size: 12px; margin: 0 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .status { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border-radius: 99px; background: var(--chip); font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .status.thinking .dot { background: var(--warn); animation: pulse 1s infinite; }
+  .status.speaking .dot { background: var(--accent); animation: pulse 1s infinite; }
+  .status.listening .dot { background: var(--good); animation: pulse 1s infinite; }
+  .status.offline .dot { background: #d64545; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none !important; } }
+  .hint { color: var(--muted); font-size: 13px; margin-left: auto; }
+
+  main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; padding: 16px 20px; max-width: 1300px; margin: 0 auto; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+
+  .camera { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; }
+  .camera img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .camera .empty { position: absolute; inset: 0; display: grid; place-items: center; color: #aab; padding: 20px; text-align: center; }
+  .badge { position: absolute; left: 10px; bottom: 10px; padding: 5px 12px; border-radius: 99px; background: rgba(0,0,0,.65); color: #fff; font-weight: 600; font-size: 14px; }
+
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .big { font-size: 20px; font-weight: 600; }
+  .muted { color: var(--muted); }
+  label.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  tr:first-child td { border-top: 0; }
+  td.state { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .on { color: var(--good); font-weight: 600; }
+
+  .gestures { display: flex; flex-wrap: wrap; gap: 6px; }
+  button {
+    font: inherit; color: var(--text); background: var(--chip); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+
+  .feed { height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+  .entry { display: flex; gap: 8px; align-items: baseline; }
+  .entry time { color: var(--muted); font-size: 12px; flex: none; font-variant-numeric: tabular-nums; }
+  .entry .who { flex: none; font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 6px; background: var(--chip); color: var(--muted); }
+  .entry.heard .who { background: var(--accent); color: var(--accent-text); }
+  .entry.said .who { background: var(--good); color: #fff; }
+  .entry .text { overflow-wrap: anywhere; }
+  .entry.gesture .text, .entry.device .text, .entry.activity .text { color: var(--muted); }
+  form { display: flex; gap: 8px; margin-top: 12px; }
+  input[type=text] {
+    flex: 1; min-width: 0; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="name">Iris</h1>
+  <span class="status offline" id="status"><span class="dot"></span><span id="status-text">Connecting…</span></span>
+  <span class="hint" id="hint"></span>
+</header>
+
+<main>
+  <div class="col">
+    <section class="panel">
+      <h2>Camera</h2>
+      <div class="camera">
+        <img id="video" alt="Live camera view with the tracked hand drawn on it" hidden>
+        <div class="empty" id="no-camera">Camera is off. Start Iris without <code>--no-camera</code> to see it here.</div>
+        <div class="badge" id="pose" hidden></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Try a gesture</h2>
+      <p class="muted" style="margin:0 0 10px">Hold one of these up to the camera, or click to simulate it.</p>
+      <div class="gestures" id="gestures"></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel">
+      <div class="row">
+        <h2>What you are doing</h2>
+        <label class="switch"><input type="checkbox" id="activity-toggle"> Recognize activity</label>
+      </div>
+      <div class="big" id="activity">—</div>
+      <div class="muted" id="activity-detail">Nothing recognized yet.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Devices</h2>
+      <table id="devices"></table>
+    </section>
+
+    <section class="panel">
+      <div class="row">
+        <h2>Conversation</h2>
+        <label class="switch"><input type="checkbox" id="speak-toggle"> Speak replies in this browser</label>
+      </div>
+      <div class="feed" id="feed" aria-live="polite"></div>
+      <form id="chat">
+        <input type="text" id="message" placeholder="Type a message to Iris…" autocomplete="off" aria-label="Message">
+        <button class="primary" type="submit">Send</button>
+      </form>
+    </section>
+  </div>
+</main>
+
+<script>
+const GESTURES = {
+  open_palm: "✋ Open palm", pointing_up: "☝️ Point up", thumbs_up: "👍 Thumbs up",
+  thumbs_down: "👎 Thumbs down", fist: "✊ Fist", victory: "✌️ Victory",
+  swipe_left: "⬅️ Swipe left", swipe_right: "➡️ Swipe right",
+};
+const WHO = { heard: "You", said: "Iris", gesture: "Gesture", activity: "Activity", device: "Device", system: "System" };
+const $ = (id) => document.getElementById(id);
+let since = 0, firstLoad = true, speakChosen = false, streamStarted = false;
+
+function post(path, body) {
+  return fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+}
+function pretty(name) { return name.replace(/_/g, " "); }
+
+for (const [name, label] of Object.entries(GESTURES)) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.addEventListener("click", () => post("/api/gesture", { name }));
+  $("gestures").append(button);
+}
+
+$("chat").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const text = $("message").value.trim();
+  if (!text) return;
+  $("message").value = "";
+  post("/api/chat", { text });
+});
+$("activity-toggle").addEventListener("change", (event) => post("/api/settings", { activity_enabled: event.target.checked }));
+$("speak-toggle").addEventListener("change", () => { speakChosen = true; if (!$("speak-toggle").checked) speechSynthesis.cancel(); });
+
+function describeDevice(state) {
+  const parts = [];
+  if ("on" in state) parts.push(state.on ? ["On", true] : ["Off", false]);
+  if ("brightness" in state) parts.push([`${state.brightness}%`, false]);
+  if ("playing" in state) parts.push(state.playing ? ["Playing", true] : ["Paused", false]);
+  if ("volume" in state) parts.push([`volume ${state.volume}`, false]);
+  if ("track" in state) parts.push([`track ${state.track}`, false]);
+  if ("entity_id" in state) parts.push([state.entity_id, false]);
+  return parts;
+}
+
+function renderDevices(devices) {
+  const rows = Object.entries(devices).map(([name, state]) => {
+    const row = document.createElement("tr");
+    const nameCell = document.createElement("td");
+    nameCell.textContent = pretty(name);
+    const stateCell = document.createElement("td");
+    stateCell.className = "state";
+    describeDevice(state).forEach(([text, on], index) => {
+      if (index) stateCell.append(" · ");
+      const span = document.createElement("span");
+      span.textContent = text;
+      if (on) span.className = "on";
+      stateCell.append(span);
+    });
+    row.append(nameCell, stateCell);
+    return row;
+  });
+  $("devices").replaceChildren(...rows);
+}
+
+function addEntries(entries, speak) {
+  const feed = $("feed");
+  const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 40;
+  for (const entry of entries) {
+    const div = document.createElement("div");
+    div.className = `entry ${entry.kind}`;
+    const time = document.createElement("time");
+    time.textContent = new Date(entry.at * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const who = document.createElement("span");
+    who.className = "who";
+    who.textContent = WHO[entry.kind] || entry.kind;
+    const text = document.createElement("span");
+    text.className = "text";
+    text.textContent = entry.kind === "gesture" || entry.kind === "device" ? pretty(entry.text) : entry.text;
+    div.append(time, who, text);
+    feed.append(div);
+    if (speak && entry.kind === "said" && $("speak-toggle").checked && "speechSynthesis" in window) {
+      speechSynthesis.speak(new SpeechSynthesisUtterance(entry.text));
+    }
+    since = Math.max(since, entry.id);
+  }
+  if (entries.length && atBottom) feed.scrollTop = feed.scrollHeight;
+}
+
+function render(state) {
+  document.title = state.name;
+  $("name").textContent = state.name;
+
+  const mode = state.status !== "idle" ? state.status : state.listening && state.microphone ? "listening" : "idle";
+  $("status").className = `status ${mode}`;
+  $("status-text").textContent = { idle: "Ready", thinking: "Thinking…", speaking: "Speaking…", listening: "Listening…" }[mode];
+  $("hint").textContent = state.microphone ? `Say “${state.wake_word}” or type below` : "Microphone is off: type below";
+
+  if (state.camera && !streamStarted) {
+    streamStarted = true;
+    $("video").src = "/stream";
+    $("video").hidden = false;
+    $("no-camera").hidden = true;
+  }
+  const badge = $("pose");
+  badge.hidden = !state.hand_visible;
+  badge.textContent = state.pose ? (GESTURES[state.pose] || pretty(state.pose)) : "Hand detected";
+
+  $("activity-toggle").checked = state.activity_enabled;
+  $("activity-toggle").disabled = !state.camera;
+  if (state.activity) {
+    $("activity").textContent = pretty(state.activity.activity);
+    $("activity-detail").textContent = state.activity.description;
+  } else {
+    $("activity").textContent = "—";
+    $("activity-detail").textContent = !state.camera ? "Needs the camera."
+      : state.activity_enabled ? "Nothing recognized yet." : "Activity recognition is off.";
+  }
+
+  renderDevices(state.devices);
+
+  if (!speakChosen) $("speak-toggle").checked = state.speech_backend === "print";
+  addEntries(state.feed, !firstLoad);
+  firstLoad = false;
+}
+
+async function poll() {
+  try {
+    const response = await fetch(`/api/state?since=${since}`);
+    render(await response.json());
+  } catch {
+    $("status").className = "status offline";
+    $("status-text").textContent = "Disconnected";
+  }
+  setTimeout(poll, 500);
+}
+poll();
+</script>
+</body>
+</html>

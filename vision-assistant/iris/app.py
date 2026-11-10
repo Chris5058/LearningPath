@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import collections
 import logging
 import queue
 import sys
 import threading
+import time
 
 import anthropic
 
@@ -20,6 +22,26 @@ from .wake import WakeGate
 log = logging.getLogger(__name__)
 
 
+class _RecordedDevices:
+    """Wraps a device backend so every action shows up in the activity feed."""
+
+    def __init__(self, backend, record) -> None:
+        self._backend = backend
+        self._record = record
+
+    def list_devices(self):
+        return self._backend.list_devices()
+
+    def execute(self, device, action, value=None):
+        result = self._backend.execute(device, action, value)
+        detail = f"{device}: {action.replace('_', ' ')}" + (f" {value}" if value is not None else "")
+        self._record("device", detail)
+        return result
+
+    def __getattr__(self, name):
+        return getattr(self._backend, name)
+
+
 class App:
     def __init__(
         self,
@@ -27,19 +49,27 @@ class App:
         text_mode: bool = False,
         use_camera: bool = True,
         use_speech: bool = True,
+        use_mic: bool = True,
         client: anthropic.Anthropic | None = None,
     ) -> None:
         self.cfg = cfg
         self.text_mode = text_mode
         self.bus = events.EventBus()
-        self.devices = make_backend(cfg)
+        # A running log of what happened, shown by the web UI.
+        self.feed: collections.deque[dict] = collections.deque(maxlen=200)
+        self._feed_lock = threading.Lock()
+        self._feed_id = 0
+        self.status = "idle"  # idle | thinking | speaking
+        self.devices = _RecordedDevices(make_backend(cfg), self.record)
         self.client = client or anthropic.Anthropic()
         self.speaker = Speaker(cfg.piper_model, enabled=use_speech)
         self.gate = WakeGate(cfg.wake_words, cfg.followup_seconds)
         self.threads: list[threading.Thread] = []
+        self.web = None
 
         self.camera = None
         self.activity = None
+        self.gestures = None
         if use_camera:
             from .vision.activity import ActivityMonitor, ActivityRecognizer
             from .vision.camera import Camera
@@ -50,10 +80,11 @@ class App:
                 self.client, cfg.scene_model, cfg.activities, request_extras(cfg)
             )
             self.activity = ActivityMonitor(cfg, self.camera, recognizer, self.bus)
-            self.threads += [self.camera, GestureWatcher(cfg, self.camera, self.bus), self.activity]
+            self.gestures = GestureWatcher(cfg, self.camera, self.bus)
+            self.threads += [self.camera, self.gestures, self.activity]
 
         self.mic = None
-        if not text_mode:
+        if use_mic and not text_mode:
             from .audio.listener import MicListener
 
             self.mic = MicListener(cfg, self.bus)
@@ -78,6 +109,33 @@ class App:
         # thread; the main loop stays free to react to gestures meanwhile.
         self._jobs: queue.Queue = queue.Queue()
         self._worker = threading.Thread(target=self._work, name="conversation", daemon=True)
+
+    # ---------------------------------------------------------------- feed
+
+    def record(self, kind: str, text: str) -> None:
+        """Add an entry to the activity feed. Kinds: heard, said, gesture,
+        activity, device, system."""
+        with self._feed_lock:
+            self._feed_id += 1
+            self.feed.append({"id": self._feed_id, "at": time.time(), "kind": kind, "text": text})
+
+    def feed_since(self, last_id: int) -> list[dict]:
+        with self._feed_lock:
+            return [entry for entry in self.feed if entry["id"] > last_id]
+
+    def preview(self):
+        """The camera frame as the user would see it in a mirror, with the
+        tracked hand drawn on it. None when there is no camera frame."""
+        frame = self.camera.latest() if self.camera else None
+        if frame is None:
+            return None
+        from .vision.gestures import draw_hand
+
+        frame = frame[:, ::-1].copy()
+        points, _pose = self.gestures.seen if self.gestures else ([], None)
+        if points:
+            draw_hand(frame, [(1 - x, y) for x, y in points])
+        return frame
 
     # ------------------------------------------------------------- actions
 
@@ -108,18 +166,22 @@ class App:
             try:
                 kind, payload, then_listen = job
                 if kind == "ask":
+                    self.status = "thinking"
                     text = self._think(lambda: self.brain.ask(payload))
                 elif kind == "react":
                     text = self._think(lambda: self.brain.react_to_activity(**payload), quiet=True)
                 else:
                     text = payload
                 if text:
+                    self.record("said", text)
+                    self.status = "speaking"
                     self._speak(text)
                     if then_listen:
                         self.gate.open()
             except Exception:
                 log.exception("Conversation worker error")
             finally:
+                self.status = "idle"
                 self._jobs.task_done()
 
     def _think(self, call, quiet: bool = False) -> str | None:
@@ -155,24 +217,27 @@ class App:
 
     def handle(self, event: events.Event) -> None:
         if event.kind == events.UTTERANCE:
-            self._on_utterance(event.data["text"])
+            self._on_utterance(event.data["text"], typed=event.data.get("typed", False))
         elif event.kind == events.GESTURE:
+            self.record("gesture", event.data["name"])
             self.automation.handle("gesture", event.data["name"])
         elif event.kind == events.ACTIVITY:
+            self.record("activity", f"{event.data['activity']}: {event.data['description']}")
             self.automation.handle("activity", event.data["activity"])
             if self.cfg.proactive:
                 self._jobs.put(("react", dict(event.data), False))
         elif event.kind == events.TIMER_DONE:
             self.say(f"Your {event.data['label']} timer is done.")
 
-    def _on_utterance(self, text: str) -> None:
+    def _on_utterance(self, text: str, typed: bool = False) -> None:
         # Typed input is always addressed to the assistant.
-        command = text.strip() if self.text_mode else self.gate.filter(text)
+        command = text.strip() if typed or self.text_mode else self.gate.filter(text)
         if command is None:
             return
         if not command:
             self.say("Yes?", then_listen=True)
             return
+        self.record("heard", command)
         self.gate.close()
         self._jobs.put(("ask", command, True))
 
@@ -194,6 +259,12 @@ class App:
             else:
                 self.bus.publish(events.UTTERANCE, text=line)
         self.bus.publish(events.SHUTDOWN)
+
+    def serve_web(self, host: str, port: int) -> None:
+        from .web.server import WebUI
+
+        self.web = WebUI(self, host, port)
+        self.web.start()
 
     def run(self) -> None:
         self._worker.start()
@@ -217,6 +288,8 @@ class App:
 
     def shutdown(self) -> None:
         log.info("Shutting down.")
+        if self.web:
+            self.web.stop()
         self.speaker.stop()
         self.brain.cancel_timers()
         for thread in self.threads:

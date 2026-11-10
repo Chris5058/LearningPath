@@ -29,6 +29,29 @@ STATIC_GESTURES = {
 }
 
 
+# Pairs of MediaPipe hand landmarks to join when drawing the hand skeleton.
+HAND_CONNECTIONS = [
+    (0, 1), (1, 2), (2, 3), (3, 4),
+    (0, 5), (5, 6), (6, 7), (7, 8),
+    (5, 9), (9, 10), (10, 11), (11, 12),
+    (9, 13), (13, 14), (14, 15), (15, 16),
+    (13, 17), (17, 18), (18, 19), (19, 20), (0, 17),
+]
+
+
+def draw_hand(frame, points: list[tuple[float, float]]) -> None:
+    """Draw a hand skeleton on a BGR frame. `points` are normalized (x, y)."""
+    import cv2
+
+    h, w = frame.shape[:2]
+    pixels = [(int(x * w), int(y * h)) for x, y in points]
+    for a, b in HAND_CONNECTIONS:
+        if a < len(pixels) and b < len(pixels):
+            cv2.line(frame, pixels[a], pixels[b], (80, 220, 120), 2, cv2.LINE_AA)
+    for point in pixels:
+        cv2.circle(frame, point, 4, (255, 255, 255), -1, cv2.LINE_AA)
+
+
 class GestureStabilizer:
     """Fires a pose once after it has been held for `hold_frames` frames in a
     row, then stays quiet until the pose changes or the hand goes away."""
@@ -105,14 +128,21 @@ class GestureWatcher(threading.Thread):
         self._halt = threading.Event()
         self.stabilizer = GestureStabilizer(cfg.gesture_hold_frames)
         self.swipes = SwipeDetector()
+        # What the recognizer sees right now, for the live preview:
+        # (hand landmark points, pose name or None).
+        self.seen: tuple[list[tuple[float, float]], str | None] = ([], None)
 
     def stop(self) -> None:
         self._halt.set()
 
     def run(self) -> None:
-        import cv2
-        import mediapipe as mp
-        from mediapipe.tasks.python import BaseOptions, vision
+        try:
+            import cv2
+            import mediapipe as mp
+            from mediapipe.tasks.python import BaseOptions, vision
+        except (ImportError, OSError) as exc:
+            log.error("Gestures are disabled (%s). Install opencv-python-headless and mediapipe.", exc)
+            return
 
         model_path = Path(self.cfg.gesture_model)
         if not model_path.exists():
@@ -151,6 +181,11 @@ class GestureWatcher(threading.Thread):
                         top = result.gestures[0][0]
                         if top.score >= 0.6:
                             label = STATIC_GESTURES.get(top.category_name)
+
+                points = (
+                    [(p.x, p.y) for p in result.hand_landmarks[0]] if result.hand_landmarks else []
+                )
+                self.seen = (points, label)
 
                 swipe = self.swipes.update(hand_x, now)
                 if swipe:

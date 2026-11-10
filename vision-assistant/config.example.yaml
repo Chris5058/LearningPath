@@ -16,6 +16,7 @@ whisper_model: base.en         # tiny.en is faster on a Raspberry Pi 4
 
 # --- Vision ---
 camera_index: 0
+activity_recognition: true     # false: never send frames on its own (cheapest)
 activity_interval: 20          # seconds between activity checks (only sent when the scene changes)
 proactive: false               # true: Claude decides what to do when your activity changes
 

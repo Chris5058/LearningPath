@@ -23,7 +23,11 @@ class Camera(threading.Thread):
         self._halt = threading.Event()
 
     def run(self) -> None:
-        import cv2
+        try:
+            import cv2
+        except ImportError as exc:
+            log.error("Camera is disabled (%s). Install opencv-python-headless.", exc)
+            return
 
         capture = cv2.VideoCapture(self.index)
         capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)

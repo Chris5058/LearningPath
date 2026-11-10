@@ -50,6 +50,7 @@ change what each one does.
 | `iris/brain.py` | Claude conversation and tools |
 | `iris/automation.py` | Rules: gesture / activity → actions |
 | `iris/devices.py` | Simulated devices and a Home Assistant backend |
+| `iris/web/` | Local web UI |
 | `iris/app.py` | Ties it all together |
 
 ## Try it on your laptop first
@@ -72,6 +73,29 @@ python -m iris --text
 # 3. Everything
 python -m iris
 ```
+
+## Web UI
+
+Add `--ui` and open http://localhost:8080 in a browser:
+
+```bash
+python -m iris --ui              # mic + camera + web page
+python -m iris --ui --no-mic     # no microphone: type in the page instead
+```
+
+The page shows the live camera with the tracked hand drawn on it, the gesture
+it currently sees, the recognized activity (with a switch to turn recognition
+off), device states, and the conversation with a box to type in. Buttons let
+you simulate each gesture without a camera. If the machine has no speech
+engine (for example Windows), the page can speak the replies itself.
+
+The page has no login and is only reachable from the same machine. To view it
+from another computer (for example a Pi without a screen), add
+`--host 0.0.0.0`; anyone on your network can then open it and see the camera.
+
+On Windows, activate the environment with `.venv\Scripts\activate` (or
+`source .venv/Scripts/activate` in Git Bash) and set the key with
+`set ANTHROPIC_API_KEY=...`.
 
 In `--text` mode you can also type `/gesture thumbs_up` or `/activity reading`
 to simulate what the camera would report. Devices are simulated by default and
@@ -128,8 +152,9 @@ activity. To support something else, implement the two methods of
   `--no-camera` to turn all vision off. Tell the people you live with that
   there is a camera.
 - Activity recognition is the main running cost because it is the only thing
-  that calls Claude without being asked. Raise `activity_interval`, or set
-  `scene_model` to a smaller model such as `claude-haiku-5-5`, to reduce it.
+  that calls Claude without being asked. To reduce it, set `scene_model` to a
+  smaller model such as `claude-haiku-5-5`, raise `activity_interval`, or turn
+  it off (`activity_recognition: false`, or the switch in the web UI).
 - `proactive: true` lets Claude decide on its own what to do when your activity
   changes, instead of only following your rules. It is off by default.
 
