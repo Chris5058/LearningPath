@@ -131,6 +131,7 @@ class GestureWatcher(threading.Thread):
         # What the recognizer sees right now, for the live preview:
         # (hand landmark points, pose name or None).
         self.seen: tuple[list[tuple[float, float]], str | None] = ([], None)
+        self.error: str | None = None  # why gestures are off, for the UI
 
     def stop(self) -> None:
         self._halt.set()
@@ -141,11 +142,13 @@ class GestureWatcher(threading.Thread):
             import mediapipe as mp
             from mediapipe.tasks.python import BaseOptions, vision
         except (ImportError, OSError) as exc:
+            self.error = f"Gestures are off: MediaPipe or OpenCV could not be loaded ({exc})."
             log.error("Gestures are disabled (%s). Install opencv-python-headless and mediapipe.", exc)
             return
 
         model_path = Path(self.cfg.gesture_model)
         if not model_path.exists():
+            self.error = f"Gestures are off: the model file {model_path} is missing (see the README)."
             log.error(
                 "Gesture model not found at %s. Run scripts/download_models.sh; "
                 "gestures are disabled.",

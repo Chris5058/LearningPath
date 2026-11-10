@@ -260,11 +260,11 @@ class App:
                 self.bus.publish(events.UTTERANCE, text=line)
         self.bus.publish(events.SHUTDOWN)
 
-    def serve_web(self, host: str, port: int) -> None:
+    def serve_web(self, host: str, port: int, open_browser: bool = False) -> None:
         from .web.server import WebUI
 
         self.web = WebUI(self, host, port)
-        self.web.start()
+        self.web.start(open_browser)
 
     def run(self) -> None:
         self._worker.start()

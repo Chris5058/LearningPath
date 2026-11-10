@@ -12,6 +12,7 @@ def main() -> None:
     parser.add_argument("--ui", action="store_true", help="Serve the web UI (camera view, devices, chat)")
     parser.add_argument("--host", default="127.0.0.1", help="Web UI address; 0.0.0.0 exposes it to your network")
     parser.add_argument("--port", type=int, default=8080, help="Web UI port")
+    parser.add_argument("--no-browser", action="store_true", help="Do not open the web UI in a browser automatically")
     parser.add_argument("--no-mic", action="store_true", help="Disable the microphone (use the web UI to type)")
     parser.add_argument("--no-camera", action="store_true", help="Disable the camera, gestures and activity recognition")
     parser.add_argument("--no-speech", action="store_true", help="Print replies instead of speaking them")
@@ -37,7 +38,7 @@ def main() -> None:
         use_mic=not args.no_mic,
     )
     if args.ui:
-        app.serve_web(args.host, args.port)
+        app.serve_web(args.host, args.port, open_browser=not args.no_browser)
     app.run()
 
 

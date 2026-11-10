@@ -76,7 +76,8 @@ python -m iris
 
 ## Web UI
 
-Add `--ui` and open http://localhost:8080 in a browser:
+Add `--ui`; the page opens in your browser at http://localhost:8080
+(`--no-browser` stops it opening by itself):
 
 ```bash
 python -m iris --ui              # mic + camera + web page
@@ -88,6 +89,9 @@ it currently sees, the recognized activity (with a switch to turn recognition
 off), device states, and the conversation with a box to type in. Buttons let
 you simulate each gesture without a camera. If the machine has no speech
 engine (for example Windows), the page can speak the replies itself.
+
+If the camera cannot be used (not installed, busy in another app, blocked by
+privacy settings), the camera panel says why.
 
 The page has no login and is only reachable from the same machine. To view it
 from another computer (for example a Pi without a screen), add

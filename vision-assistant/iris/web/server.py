@@ -35,6 +35,9 @@ def build_state(app, since: int) -> dict:
         "wake_word": app.cfg.wake_words[0],
         "microphone": app.mic is not None,
         "camera": app.camera is not None,
+        "camera_ready": bool(app.camera and app.camera.has_frame),
+        "camera_error": app.camera.error if app.camera else None,
+        "gesture_error": app.gestures.error if app.gestures else None,
         "hand_visible": bool(points),
         "pose": pose,
         "activity": app.activity.current if app.activity else None,
@@ -176,9 +179,17 @@ class WebUI:
         shown = "localhost" if self.host in ("127.0.0.1", "0.0.0.0") else self.host
         return f"http://{shown}:{self.port}"
 
-    def start(self) -> None:
+    def start(self, open_browser: bool = False) -> None:
         threading.Thread(target=self.server.serve_forever, name="web", daemon=True).start()
         log.info("Web UI: %s", self.url)
+        print(f"\nOpen {self.url} in your browser. Press Ctrl+C here to stop.\n", flush=True)
+        if open_browser:
+            import webbrowser
+
+            try:
+                webbrowser.open(self.url)
+            except Exception as exc:  # no browser, e.g. a headless device
+                log.debug("Could not open a browser: %s", exc)
         if self.host not in ("127.0.0.1", "localhost"):
             log.warning("The web UI has no login: anyone on your network can see the camera.")
 

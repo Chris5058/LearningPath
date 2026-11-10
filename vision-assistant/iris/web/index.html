@@ -100,6 +100,7 @@
         <div class="empty" id="no-camera">Camera is off. Start Iris without <code>--no-camera</code> to see it here.</div>
         <div class="badge" id="pose" hidden></div>
       </div>
+      <p class="muted" id="gesture-note" style="margin:10px 0 0" hidden></p>
     </section>
 
     <section class="panel">
@@ -235,12 +236,18 @@ function render(state) {
   $("status-text").textContent = { idle: "Ready", thinking: "Thinking…", speaking: "Speaking…", listening: "Listening…" }[mode];
   $("hint").textContent = state.microphone ? `Say “${state.wake_word}” or type below` : "Microphone is off: type below";
 
-  if (state.camera && !streamStarted) {
+  if (state.camera && state.camera_ready && !streamStarted) {
     streamStarted = true;
     $("video").src = "/stream";
     $("video").hidden = false;
-    $("no-camera").hidden = true;
   }
+  $("no-camera").hidden = streamStarted && !state.camera_error;
+  if (state.camera) {
+    $("no-camera").textContent = state.camera_error || "Starting the camera…";
+    $("video").hidden = !streamStarted || Boolean(state.camera_error);
+  }
+  $("gesture-note").hidden = !state.gesture_error;
+  $("gesture-note").textContent = state.gesture_error || "";
   const badge = $("pose");
   badge.hidden = !state.hand_visible;
   badge.textContent = state.pose ? (GESTURES[state.pose] || pretty(state.pose)) : "Hand detected";

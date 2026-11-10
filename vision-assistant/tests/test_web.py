@@ -116,3 +116,39 @@ def test_draw_hand_marks_the_frame():
     frame = np.zeros((120, 160, 3), np.uint8)
     draw_hand(frame, [(0.1 + 0.04 * i, 0.5) for i in range(21)])
     assert frame.any()
+
+
+def test_state_reports_why_the_camera_is_dark():
+    class Cam:
+        has_frame = False
+        error = "Could not open camera 0."
+
+        def latest(self):
+            return None
+
+    class Gestures:
+        seen = ([], None)
+        error = "Gestures are off: model missing."
+
+    from iris.web.server import build_state
+
+    app = App(Config(), text_mode=True, use_camera=False, use_speech=False, client=FakeClient())
+    app.camera, app.gestures = Cam(), Gestures()
+    s = build_state(app, 0)
+    assert s["camera"] is True and s["camera_ready"] is False
+    assert s["camera_error"] == "Could not open camera 0."
+    assert s["gesture_error"].startswith("Gestures are off")
+
+
+def test_browser_opens_only_when_asked(monkeypatch):
+    import webbrowser
+
+    opened = []
+    monkeypatch.setattr(webbrowser, "open", opened.append)
+    app = App(Config(), text_mode=True, use_camera=False, use_speech=False, client=FakeClient())
+    app.serve_web("127.0.0.1", 0, open_browser=True)
+    app.web.stop()
+    assert opened == [f"http://localhost:{app.web.port}"]
+    app.serve_web("127.0.0.1", 0)
+    app.web.stop()
+    assert len(opened) == 1
