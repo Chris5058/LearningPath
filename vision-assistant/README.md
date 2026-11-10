@@ -55,6 +55,18 @@ change what each one does.
 
 ## Try it on your laptop first
 
+The quick way, from a terminal (Git Bash on Windows):
+
+```bash
+cd vision-assistant
+./start.sh
+```
+
+It creates the Python environment, installs the packages, downloads the
+gesture model, asks for your Claude API key if `ANTHROPIC_API_KEY` is not set,
+and opens the web UI. Later runs skip what is already done. The manual steps
+are below.
+
 No device or smart-home hardware is needed to start.
 
 ```bash
